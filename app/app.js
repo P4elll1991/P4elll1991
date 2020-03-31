@@ -1,8 +1,7 @@
 
 
-
+var BookTab = new bookTab();
 var StaffTab = new staffTab;
-var BookTab = new bookTab(StaffTab.staff);
 var JournalTab = new journalTab;
 
 
@@ -11,9 +10,8 @@ function initch(a) {
 }
 
 function init() {
-  var y = StaffTab.getView();
   var x = BookTab.getView();
- 
+  var y = StaffTab.getView();
   var z = JournalTab.getView();
   
  viewer = {  
@@ -30,18 +28,25 @@ return viewer
 
 function run(){
   webix.ui(init());
-  var staffOptions = [];
-    $$("staffTable").eachRow(function(row){
-      var record = $$("staffTable").getItem(row);
-      var option = {};
-      option.id = record.id;
-      option.value = record.nameWocker + " " + record.cellphone;
-      staffOptions.push(option);
-  });
-  console.log(staffOptions);
-  webix.ui(BookTab.initWindow(staffOptions));
+  
+  
+  webix.ui(BookTab.initWindow());
   webix.ui(StaffTab.initWindow());
   
+  webix.ajax().get("/Staff/Give").then(function(data){
+    var staffOptions =[];
+    data = data.json();
+    data.forEach(function(val){
+      var option = {};
+      option.id = val.Id;
+      option.value = val.Name + " " + val.Cellnumber;
+      staffOptions.push(option);
+      
+    });
+    console.log(staffOptions);
+    $$("options").parse(staffOptions);
+    return staffOptions;
+});
   BookTab.editeEvents(BookTab);
   StaffTab.editeEvents(StaffTab);
   JournalTab.editeEvents(JournalTab);
@@ -49,7 +54,7 @@ function run(){
   
 };
 run();
-  
+
 
 
 

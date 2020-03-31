@@ -3,15 +3,8 @@ class journalTab {
 
     constructor(){
     this.modal = new modalJournal();
-    this.journal = this.modal.giveData(this.modal);
-    console.log(this.journal);
+    this.modal.giveData(this.modal);
   }
-
-    journal = [
-      {id: 0, Event: "Выдано", nameBook:"Тихий Дон", ISBNLog: 134, date: "12-2-20", nameWockerLog: "Иванов Иван Иванович", wockerId: 453, departmentLog:"12-2-20", positionLog:"12-5-20", },
-      {id: 1, Event: "Выдано", nameBook:"Горе от ума", ISBNLog: 2341, date: "16.1.20", nameWockerLog: "Петров Петр Петрович", wockerId: 656, departmentLog:"12-2-20", positionLog:"12-5-20", },
-      {id: 2, Event: "Выдано", nameBook:"Атлант расправил плечи", ISBNLog: 165876, date: "7.11.17", nameWockerLog: "Александров Адександр Александрович", wockerId:  98, departmentLog:"12-2-20", positionLog:"12-5-20", },
-    ];
   
     buttons = [
       { id:"goToEmployeeLog", view:"button", type:"icon", icon:"mdi mdi-account", value: "Перейти к сотруднику"},
@@ -20,13 +13,12 @@ class journalTab {
   
     columns = [
       { id:"Event",    header:"Событие",  sort: "string",  adjust:true,},
-      { id:"nameBook",   header:"Название",   sort: "string",  adjust:true,},
-      { id:"ISBNLog",  header:"ISBN",   sort: "int",  adjust:true,},
-      { id:"date",  header:"Дата события",  format:webix.i18n.dateFormatStr, sort: "date",  adjust:true,},
-      { id:"nameWockerLog",  header:"ФИО",   sort: "string",  adjust:true,},
-      { id:"departmentLog",  header:"Отдел",   sort: "string",  adjust:true,},
-      { id:"positionLog",  header:"Должность",   sort: "string",  adjust:true,},
-    ];
+      { id:"BookNameJ",   header:"Название",   sort: "string",  adjust:true,},
+      { id:"IsbnJ",  header:"ISBN",   sort: "int",  adjust:true,},
+      { id:"DateEvent",  header:"Дата события",  format:webix.i18n.dateFormatStr, sort: "date",  adjust:true,},
+      { id:"NameJ",  header:"ФИО",   sort: "string",  adjust:true,},
+      { id:"CellnumberJ",  header:"Телефон",   sort: "string",  adjust:true,},
+      ];
   
     init(){
       this.view = {
@@ -51,7 +43,7 @@ class journalTab {
             css:"webix_data_border webix_header_border",
             multiselect:true, 
             columns: this.columns, 
-            data: this.journal, select:true, 
+            select:true, 
             },
     
           ]},
@@ -78,10 +70,10 @@ class journalTab {
 
     focusBook() {
       var item = $$("journalTable").getSelectedItem();
-      console.log(item);
+      
       if (!item) return;
       var item_id = item.id;
-      var focusId = item.ISBNLog;
+      var focusId = item.BookId;
       if (!focusId) return;
 
       $$("journalTable").unselect(item_id);
@@ -95,10 +87,9 @@ class journalTab {
 
     focusStaff() {
       var item = $$("journalTable").getSelectedItem();
-      console.log(item);
       if (!item) return;
       var item_id = item.id;
-      var focusId = item.wockerId;
+      var focusId = item.EmployeeId;
       if (!focusId) return;
 
       $$("journalTable").unselect(item_id);

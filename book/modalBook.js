@@ -6,7 +6,9 @@ class modalBook {
 		
 		webix.ajax().get("/Books/Give").then(function(data){
 			data = data.json();
-			console.log(data);
+			data.forEach(function(val){
+				val.id = val.Id;
+			});
             $$("bookTable").parse(data);
 		  });
 		

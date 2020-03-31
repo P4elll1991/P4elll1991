@@ -1,9 +1,8 @@
 class bookTab {
 
-    constructor(staff){
+    constructor(){
     this.modal = new modalBook();
     this.modal.giveData(this.modal);
-    this.staff = staff;
     
   }
   
@@ -21,8 +20,8 @@ class bookTab {
         { id:"Autor",  header:"Автор", adjust:true, sort: "string"},
         { id:"Publisher",  header:"Издатель", adjust: true, sort: "string"},
         { id:"Year",  header:"Год", adjust: true, sort: "int",},
-        { id:"Status",  header:"Статус", adjust: true, sort: "string"},
-        { id:"Name",  header:"Сотрудник", adjust: true, sort: "string"},
+        { id:"Status",  header:"Статус", width:150, sort: "string"},
+        { id:"Name",  header:"Сотрудник", width:200, sort: "string"},
         { id:"Datestart",  header:"Дата выдачи", adjust: true, format:webix.i18n.dateFormatStr, sort: "date"},
         { id:"Datefinish",  header:"Дата сдачи", adjust: true, format:webix.i18n.dateFormatStr, sort: "date"}
                     ];
@@ -62,10 +61,12 @@ class bookTab {
   
     }
 
-    initWindow(staffOptions) {
-
+    initWindow() {
+      var count = $$("bookTable").getVisibleCount();
+      console.log(count);
+      this.staffOptions = [];
       this.up = new windowBook();
-      this.window = this.up.getWindow(staffOptions);
+      this.window = this.up.getWindow(this.staffOptions);
       return this.window;
     }
 
@@ -133,6 +134,7 @@ class bookTab {
         if (newv == "Нет в наличии") {
            $$("formBook").elements["Name"].show();
 
+
         } else if (newv == "В наличии"){
           $$("formBook").elements["Name"].hide();
         }
@@ -166,7 +168,6 @@ class bookTab {
             ok: "Да",
           }).then(function(){
             list.remove(item_id);
-            console.log(item.Id);
             webix.ajax().post("/Book/Delete?id="+item.Id);
           });
       }
@@ -196,7 +197,13 @@ class bookTab {
       console.log(item);
       $$("formBook").setValues(item);
       $$("formBook").setValues(item);
-      if (Array.isArray(item)) return;
+      if (Array.isArray(item)) {
+        item.forEach(function(val){
+          val.ch1 = 1;
+          $$("bookTable").updateItem(val.id, item);
+        });
+        return;
+      }
       item.ch1 = 1;
       
       $$("bookTable").updateItem(item.id, item);
@@ -211,10 +218,12 @@ class bookTab {
     }
 
   updateTab(check){
-    console.log(1);
+    var table = $$("bookTable");
+    var item = table.getSelectedItem();
      var form = $$("formBook");
-     var table = $$("bookTable");
      var item_data = form.getValues();
+     
+    
 
     form.validate();
     if (!form.validate()){
@@ -251,46 +260,80 @@ class bookTab {
 
      } else {
       if (item_data.Status) {
+        item_data.Employeeid = Number(item_data.Name);
           if (item_data.Status == "В наличии") {
+            this.postData = {
+              Id:Number(item_data.Id),
+              Isbn:Number(item_data.Isbn), 
+              BookName:item_data.BookName, 
+              Autor:item_data.Autor, 
+              Publisher:item_data.Publisher, 
+              Year:Number(item_data.Year),
+              EmployeeId:1,
+      
+            }
           item_data.Name = "";
-          item_data.timeFinish = "";
-          item_data.timeStart = "";
+          item_data.Datestart = "";
+          item_data.Datefinish = "";
         } else {
+          this.postData = {
+            Id:Number(item_data.Id),
+            Isbn:Number(item_data.Isbn), 
+            BookName:item_data.BookName, 
+            Autor:item_data.Autor, 
+            Publisher:item_data.Publisher, 
+            Year:Number(item_data.Year),
+            EmployeeId:item_data.Employeeid,
+    
+          }
           var today = new Date;
           var dateFinish = new Date;
-          item_data.TimeStart = new Date;
+          item_data.Datestart = new Date;
           dateFinish.setDate(dateFinish.getDate() + 7);
-          console.log(dateFinish);
-          item_data.TimeFinish = dateFinish;
+          item_data.Datefinish = dateFinish;
 
         }
       }
       
-      this.postData = {
-        isbn:Number(item_data.Isbn), 
-        bookName:item_data.BookName, 
-        autor:item_data.Autor, 
-        publisher:item_data.Publisher, 
-        year:Number(item_data.Year),
-        employeeId:Number(item_data.EmployeeId),
-
-      }
-        console.log(this.postData)
-
-    //   webix.ajax().headers({
-    //     "Content-type":"application/json"
-    // }).post("/Books/Add", JSON.stringify(this.postData));
         console.log(item_data);
-          
-        item_data.Employeeid = Number(item_data.Name);
+        if (item.Status != item_data.Status){
+          if(item_data.Status == "В наличии"){
+            console.log("Возвращено")
+            this.postDataEvent = {
+              Event: "Возвращено",
+              BookId :Number(item_data.Id),
+              EmployeeId: Number(item.Employeeid),
+            };
+            console.log(this.postDataEvent)
+          } else {
+            console.log("Выдано")
+            this.postDataEvent = {
+              Event: "Выдано",
+              BookId :Number(item_data.Id),
+              EmployeeId: Number(item_data.Employeeid),
+            };
+            console.log(this.postDataEvent)
+          }
+
+          webix.ajax().headers({
+            "Content-type":"application/json"
+        }).post("/Event/Add", JSON.stringify(this.postDataEvent));
+
+
+
+        } 
 
         $$("staffTable").eachRow(function(row){
             var record = $$("staffTable").getItem(row);
-            if (record.id == item_data.Name){
-              item_data.Name = record.nameWocker + " " + record.cellphone;
+            if (record.Id == item_data.Name){
+              item_data.Name = record.Name + " " + record.Cellnumber;
             }
         });
-
+        
+          console.log(this.postData);
+          webix.ajax().headers({
+            "Content-type":"application/json"
+        }).post("/Books/Update", JSON.stringify(this.postData));
 
        table.updateItem(item_data.id, item_data);
      }
@@ -301,18 +344,11 @@ class bookTab {
   }
 
   focus() {
-    var item = $$("bookTable").getSelectedId();
-    console.log(item);
+    var item = $$("bookTable").getSelectedItem();
     if (!item) return;
     var item_id = item.id;
-    var focusId;
-
-    
-    this.books.forEach(function(v){
-        if (v.id == item.id) focusId = v.Employeeid;
-      });
-    
-
+    var focusId = item.Employeeid;
+  
     if (!focusId) return;
 
     $$("bookTable").unselect(item_id);

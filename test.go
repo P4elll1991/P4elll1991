@@ -12,6 +12,31 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type EventPro struct {
+	Id         int
+	Event      string
+	BookId     int
+	DateEvent  time.Time
+	EmployeeId int
+}
+
+type Event struct {
+	Id          int
+	Event       string
+	BookId      int
+	BookNameJ   string
+	IsbnJ       int
+	DateEvent   string
+	EmployeeId  int
+	NameJ       string
+	CellnumberJ int
+}
+
+type IdStaff struct {
+	IdEmp   string
+	IdStaff []int
+}
+
 type Employee struct {
 	Id         int
 	Name       string
@@ -94,7 +119,91 @@ func (m msg) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(resp, m)
 }
 
+// JournalProvaider
+
+func AddEventPro(event EventPro) error {
+
+	event.DateEvent = time.Now()
+
+	err := AddEvent(event)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GiveJournalPro() (journal []Event, err error) {
+
+	journalPro, books, staff, err := TakeJournal()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, val := range journalPro {
+		p := Event{}
+		for _, v := range books {
+			if val.BookId == v.Id {
+				p.BookNameJ = v.BookName
+				p.IsbnJ = v.Isbn
+			}
+		}
+		for _, v := range staff {
+			if val.EmployeeId == v.Id {
+				p.NameJ = v.Name
+				p.CellnumberJ = v.Cellnumber
+			}
+		}
+
+		p.Id = val.Id
+		p.Event = val.Event
+		p.BookId = val.BookId
+		p.EmployeeId = val.EmployeeId
+		p.DateEvent = val.DateEvent.Format("2006-01-02")
+
+		journal = append(journal, p)
+	}
+
+	return journal, nil
+}
+
 // StaffProvaider
+
+func UpStaffPro(staff EmployeePro) error {
+	err := UpStaff(staff)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func StaffDeletePro(staff IdStaff) error {
+	if staff.IdEmp != "" {
+		Id, err := strconv.Atoi(staff.IdEmp)
+		if err != nil {
+			return err
+		}
+		err = StaffDelete1(Id)
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		err := StaffDelete2(staff.IdStaff)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func AddStaffPro(staff EmployeePro) error {
+	err := AddStaff(staff)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func GiveStaffPro() (staff []Employee, err error) {
 	staffPro, books, err := TakeStaff()
@@ -123,7 +232,175 @@ func GiveStaffPro() (staff []Employee, err error) {
 	return staff, nil
 }
 
+// JournalMapper
+
+func AddEvent(event EventPro) error {
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Добавить елемент
+
+	connStr = "insert into journal (event, bookid, employeeid, dateevent) values ( $1, $2, $3, $4)"
+	_, err = db.Exec(connStr, event.Event, event.BookId, event.EmployeeId, event.DateEvent)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TakeJournal() (journal []EventPro, books []Book, staff []Employee, err error) {
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer db.Close()
+
+	connStr = "SELECT id, Name, Cellnumber FROM staff"
+	rows, err := db.Query(connStr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer rows.Close()
+	staff = []Employee{}
+
+	for rows.Next() {
+		p := Employee{}
+		err := rows.Scan(&p.Id, &p.Name, &p.Cellnumber)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		staff = append(staff, p)
+	}
+
+	connStr = "SELECT id, Isbn, BookName From books"
+	rows, err = db.Query(connStr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer rows.Close()
+	books = []Book{}
+
+	for rows.Next() {
+		p := Book{}
+		err := rows.Scan(&p.Id, &p.Isbn, &p.BookName)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		books = append(books, p)
+	}
+
+	connStr = "SELECT * From journal"
+	rows, err = db.Query(connStr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer rows.Close()
+	journal = []EventPro{}
+
+	for rows.Next() {
+		p := EventPro{}
+		err := rows.Scan(&p.Id, &p.Event, &p.BookId, &p.EmployeeId, &p.DateEvent)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		journal = append(journal, p)
+	}
+
+	return journal, books, staff, nil
+}
+
 // StaffMapper
+
+func StaffDelete2(s []int) error {
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	connStr = "delete from staff where id = $1"
+
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	for _, v := range s {
+		_, err = db.Exec(connStr, v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func StaffDelete1(id int) error {
+	// Открытие базы данных
+
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	connStr = "delete from staff where id = $1"
+
+	// Удаление из базы данных
+	_, err = db.Exec(connStr, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpStaff(staff EmployeePro) error {
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Добавить елемент
+
+	connStr = "update staff set name = $1, department = $2, position = $3, cellnumber = $4 where id = $5"
+	_, err = db.Exec(connStr, staff.Name, staff.Department, staff.Position, staff.Cellnumber, staff.Id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func AddStaff(staff EmployeePro) error {
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Добавить елемент
+
+	connStr = "insert into staff (name, department, position, cellnumber) values ( $1, $2, $3, $4)"
+	_, err = db.Exec(connStr, staff.Name, staff.Department, staff.Position, staff.Cellnumber)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func TakeStaff() ([]EmployeePro, []BookOfEmployee, error) {
 	connStr := "user=postgres password=q dbname=library sslmode=disable"
@@ -178,13 +455,21 @@ func TakeStaff() ([]EmployeePro, []BookOfEmployee, error) {
 
 //BookProvaider
 
+func UpdateBookPro(bookUpdate Book) error {
+	bookUpdate.Datestart = time.Now()
+	err := UpdateBook(bookUpdate)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func BookDeletePro(books IdBooks) error {
 	if books.IdBook != "" {
 		Id, err := strconv.Atoi(books.IdBook)
 		if err != nil {
 			return err
 		}
-		fmt.Println("hello, $1!\n", Id)
 		err = BookDelete1(Id)
 		if err != nil {
 			return err
@@ -249,6 +534,27 @@ func GiveBooksPro() (bookspro []BookPro, err error) {
 }
 
 // BookMapper
+
+func UpdateBook(b Book) error {
+	connStr := "user=postgres password=q dbname=library sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Добавить елемент
+
+	connStr = "update books set isbn = $1, bookname = $2, autor = $3, publisher = $4, year = $5, Employeeid = $6,  Datestart = $7 where id = $8"
+	_, err = db.Exec(connStr, b.Isbn, b.BookName, b.Autor, b.Publisher, b.Year, b.Employeeid, b.Datestart, b.Id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func BookDelete2(b []int) error {
 	connStr := "user=postgres password=q dbname=library sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
@@ -398,7 +704,6 @@ func main() {
 				fmt.Println(err)
 				return
 			}
-			fmt.Println("hello, $1!\n", IdArr.IdBook)
 			return
 		}
 		body, err := ioutil.ReadAll(r.Body)
@@ -434,7 +739,147 @@ func main() {
 		}
 
 		w.Write(js)
-		fmt.Println(staff)
+	})
+
+	http.HandleFunc("/Staff/Add", func(w http.ResponseWriter, r *http.Request) {
+		var empAdd EmployeePro
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			//если все нормально - пишем по указателю в структуру
+			err = json.Unmarshal(body, &empAdd)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		err = AddStaffPro(empAdd)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("ok")
+	})
+
+	http.HandleFunc("/Staff/Delete", func(w http.ResponseWriter, r *http.Request) {
+		var IdArr IdStaff
+		IdArr.IdEmp = r.URL.Query().Get("id")
+		if IdArr.IdEmp != "" {
+			err := StaffDeletePro(IdArr)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			return
+		}
+		body, err := ioutil.ReadAll(r.Body)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			//если все нормально - пишем по указателю в структуру
+			err = json.Unmarshal(body, &IdArr.IdStaff)
+			if err != nil {
+				fmt.Println(err)
+			}
+			err := StaffDeletePro(IdArr)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+		fmt.Println("ok")
+	})
+
+	http.HandleFunc("/Staff/Update", func(w http.ResponseWriter, r *http.Request) {
+		var empAdd EmployeePro
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			//если все нормально - пишем по указателю в структуру
+			err = json.Unmarshal(body, &empAdd)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		err = UpStaffPro(empAdd)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("ok")
+	})
+
+	http.HandleFunc("/Books/Update", func(w http.ResponseWriter, r *http.Request) {
+		var bookUpdete Book
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			//если все нормально - пишем по указателю в структуру
+			err = json.Unmarshal(body, &bookUpdete)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		err = UpdateBookPro(bookUpdete)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println("ok")
+	})
+
+	http.HandleFunc("/Journal/Give", func(w http.ResponseWriter, r *http.Request) {
+		Journal, err := GiveJournalPro()
+		if err != nil {
+			panic(err)
+		}
+
+		js, err := json.Marshal(Journal)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(js)
+		//fmt.Fprint(w, "ok")
+	})
+
+	http.HandleFunc("/Event/Add", func(w http.ResponseWriter, r *http.Request) {
+		var event EventPro
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			//если все нормально - пишем по указателю в структуру
+			err = json.Unmarshal(body, &event)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		err = AddEventPro(event)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("ok")
 	})
 
 	fmt.Println("Server is listening...")

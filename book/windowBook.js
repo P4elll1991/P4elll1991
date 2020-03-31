@@ -15,6 +15,7 @@ class windowBook {
             };
     
     getWindow(staffOptions){
+      
         console.log(staffOptions);
         this.window = {
             view:"window",
@@ -41,7 +42,12 @@ class windowBook {
                     { view:"text", name:"Publisher", label:"Издатель" },
                     { view:"text", name:"Year", label:"Год" },
                     { view:"richselect", id: "Status", name:"Status",  label:"Статус",  value:"В наличии", options:["В наличии", "Нет в наличии"]},
-                    { view:"richselect", id:"Name", name:"Name",  label:"Сотрудник", hidden: true, options:staffOptions, minWidth: 500},
+                    { view:"richselect", id:"Name", name:"Name",  label:"Сотрудник", hidden: true, minWidth: 500, options:{
+                      body:{
+                        id:"options",
+                        datatype:"json"
+                      }
+                    }},
                     { view:"button", id:"updateBookTab", type:"icon", icon:"mdi mdi-check", }
                     ],
                       rules: this.formRules,

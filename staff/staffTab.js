@@ -130,18 +130,44 @@ class staffTab{
     delete(){
     var list = $$("staffTable");
     var item_id = list.getSelectedId();
-    if (item_id){
-      webix.confirm({
-          text: "Вы действительно хотите удалить сотрудника",
-          cancel: "Нет", 
-          ok: "Да",
-        }).then(function(){list.remove(item_id)});
+    var item = list.getSelectedItem();
+    
+    if (!Array.isArray(item)) {
+      if (item_id){
+        webix.confirm({
+            text: "Вы действительно хотите удалить сотрудника",
+            cancel: "Нет", 
+            ok: "Да",
+          }).then(function(){
+            list.remove(item_id);
+            webix.ajax().post("/Staff/Delete?id="+item.Id);
+          });
+      } 
+    }else {
+      var IdList = [];
+      item.forEach(function(val){
+        IdList.push(val.Id);
+        console.log(IdList);
+      });
+      if (item_id){
+        webix.confirm({
+            text: "Вы действительно хотите удалить сотрудников?",
+            cancel: "Нет", 
+            ok: "Да",
+          }).then(function(){
+            list.remove(item_id);
+            console.log(IdList);
+            webix.ajax().headers({
+              "Content-type":"application/json"
+          }).post("/Staff/Delete", JSON.stringify(IdList));
+          });
+      }
     }
   }
 
   afterSelect() {
       var item = $$("staffTable").getSelectedItem();
-
+      console.log(item);
       $$("formStaff").setValues(item);
       $$("formStaff").setValues(item);
       if (Array.isArray(item)) return;
@@ -159,7 +185,7 @@ class staffTab{
     }
 
   updateTab(check){
-    console.log(1);
+    
      var form = $$("formStaff");
      var table = $$("staffTable");
      var item_data = form.getValues();
@@ -178,8 +204,33 @@ class staffTab{
           };};
       }
       table.add(item_data);
+      this.postData = {
+        action:"info",
+        Name: item_data.Name,
+        Department: item_data.Department,
+        Position: item_data.Position,
+        Cellnumber:Number(item_data.Cellnumber)
+      }
+      console.log(this.postData);
+      webix.ajax().headers({
+        "Content-type":"application/json"
+    }).post("/Staff/Add", JSON.stringify(this.postData));
+
      } else {
+      this.postData = {
+        action:"info",
+        Id:Number(item_data.Id),
+        Name: item_data.Name,
+        Department: item_data.Department,
+        Position: item_data.Position,
+        Cellnumber:Number(item_data.Cellnumber)
+      }
+      console.log(this.postData);
+      webix.ajax().headers({
+        "Content-type":"application/json"
+        }).post("/Staff/Update", JSON.stringify(this.postData));
        table.updateItem(item_data.id, item_data);
+       
      }
      
      
@@ -188,27 +239,39 @@ class staffTab{
   }
 
   focus() {
-    var item = $$("staffTable").getSelectedId();
+    var item = $$("staffTable").getSelectedItem();
     console.log(item);
     if (!item) return;
     var item_id = item.id;
-    var focusId;
-
-    
-    this.staff.forEach(function(v){
-        if (v.id == item.id) focusId = v.haveBooksId;
-      });
-    
+    var focusId = item.Books;
 
     if (!focusId) return;
-
     $$("staffTable").unselect(item_id);
     item.ch2 = 0;
     $$("staffTable").updateItem(item.id, item);
     $$("bookTable").unselectAll();
-    $$("bookTable").select(focusId,true);
-    $$("bookView").show();
-    $$("bookTable").showItem(focusId);
+    
+
+    focusId.forEach(function(v){
+        
+          $$("bookTable").select(v.IdBook,true);
+          $$("bookTable").showItem(v.IdBook);
+          $$("bookView").show();
+      });
+    
+  }
+
+  Option(){
+    this.staffOptions = [];
+    $$("staffTable").eachRow(function(row){
+      var record = $$("staffTable").getItem(row);
+      console.log(record);
+      var option = {};
+      option.id = record.id;
+      option.value = record.nameWocker + " " + record.cellphone;
+      this.staffOptions.push(option);
+  });
+  return this.staffOptions
   }
 
 }
